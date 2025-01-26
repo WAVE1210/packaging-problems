@@ -1,0 +1,133 @@
+pip install openai google-speech pyttsx3 pygame
+import openai
+import pyttsx3
+import speech_recognition as sr
+import pygame
+
+# Configuration API OpenAI
+openai.api_key = "VOTRE_CLÉ_API_OPENAI"
+
+# Initialisation de la synthèse vocale
+engine = pyttsx3.init()
+
+# Fonction pour utiliser OpenAI (ChatGPT)
+def get_chatgpt_response(prompt):
+    response = openai.Completion.create(
+        engine="text-davinci-003",  # Modèle ChatGPT
+        prompt=prompt,
+        max_tokens=150
+    )
+    return response.choices[0].text.strip()
+
+# Fonction pour convertir la voix en texte
+def speech_to_text():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Parlez maintenant...")
+        audio = recognizer.listen(source)
+        try:
+            return recognizer.recognize_google(audio, language="fr-FR")
+        except sr.UnknownValueError:
+            return "Je n'ai pas compris."
+        except sr.RequestError:
+            return "Erreur de service."
+
+# Fonction pour faire parler l'avatar
+def text_to_speech(text):
+    engine.say(text)
+    engine.runAndWait()
+
+# Animation de l'avatar avec Pygame
+def avatar_animation():
+    pygame.init()
+    screen = pygame.display.set_mode((400, 400))
+    pygame.display.set_caption("Avatar parlant")
+    avatar = pygame.image.load("avatar_image.png")  # Ajoutez une image d'avatar
+    clock = pygame.time.Clock()
+    running = True
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        screen.fill((0, 0, 0))
+        screen.blit(avatar, (100, 100))  # Affiche l'image de l'avatar
+        pygame.display.update()
+        clock.tick(30)
+
+# Boucle principale
+if __name__ == "__main__":
+    print("Lancement de l'avatar...")
+    while True:
+        user_input = speech_to_text()  # Étape 1 : Reconnaissance vocale
+        if "arrête" in user_input.lower():
+            print("Arrêt du programme.")
+            break
+
+        print("Vous : " + user_input)
+        response = get_chatgpt_response(user_input)  # Étape 2 : Réponse ChatGPT
+        print("Avatar : " + response)
+        text_to_speech(response)  # Étape 3 : Synthèse vocale
+        avatar_animation()  # Étape 4 : Animation de l'avatar
+import moderngl
+import numpy as np
+from pyrr import Matrix44
+import glfw
+
+# Initialisation de GLFW
+if not glfw.init():
+    raise Exception("GLFW ne peut pas être initialisé !")
+
+# Création d'une fenêtre
+window = glfw.create_window(800, 600, "Hologramme simulé", None, None)
+if not window:
+    glfw.terminate()
+    raise Exception("Fenêtre GLFW non créée !")
+
+glfw.make_context_current(window)
+
+# Contexte ModernGL
+ctx = moderngl.create_context()
+
+# Création d'un shader simple
+vertex_shader = '''
+#version 330
+in vec3 in_vert;
+uniform mat4 model;
+void main() {
+    gl_Position = model * vec4(in_vert, 1.0);
+}
+'''
+fragment_shader = '''
+#version 330
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(0.0, 1.0, 1.0, 0.7);  // Bleu cyan transparent (effet hologramme)
+}
+'''
+
+# Compilation du programme shader
+prog = ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
+
+# Données pour un cube 3D
+vertices = np.array([
+    -0.5, -0.5, -0.5,  0.5, -0.5, -0.5,  0.5,  0.5, -0.5, -0.5,  0.5, -0.5,
+    -0.5, -0.5,  0.5,  0.5, -0.5,  0.5,  0.5,  0.5,  0.5, -0.5,  0.5,  0.5,
+], dtype='f4')
+
+vbo = ctx.buffer(vertices)
+vao = ctx.simple_vertex_array(prog, vbo, 'in_vert')
+
+# Matrice de transformation
+model = Matrix44.identity()
+prog['model'].write(model.astype('f4'))
+
+# Boucle principale
+while not glfw.window_should_close(window):
+    ctx.clear(0.0, 0.0, 0.0)
+    vao.render(moderngl.TRIANGLE_STRIP)
+    glfw.swap_buffers(window)
+    glfw.poll_events()
+
+glfw.terminate()
